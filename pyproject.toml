@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.urls]
-respository="https://github.com/kenstott/pyhasura"
+repository="https://github.com/kenstott/pyhasura"
 
 [build-system]
 requires = ["setuptools >= 61.0"]
