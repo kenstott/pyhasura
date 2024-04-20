@@ -1,0 +1,157 @@
+{
+    "carts": [
+        {
+            "is_complete": true,
+            "cart_items": [
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 150
+                    }
+                },
+                {
+                    "quantity": 2,
+                    "product": {
+                        "price": 1000
+                    }
+                },
+                {
+                    "quantity": -2,
+                    "product": {
+                        "price": 1000
+                    }
+                }
+            ]
+        },
+        {
+            "is_complete": false,
+            "cart_items": [
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 1000
+                    }
+                },
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 1600
+                    }
+                },
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 150
+                    }
+                }
+            ]
+        },
+        {
+            "is_complete": false,
+            "cart_items": [
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 1100
+                    }
+                },
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 1000
+                    }
+                },
+                {
+                    "quantity": 2,
+                    "product": {
+                        "price": 150
+                    }
+                },
+                {
+                    "quantity": -1,
+                    "product": {
+                        "price": 1000
+                    }
+                }
+            ]
+        },
+        {
+            "is_complete": true,
+            "cart_items": [
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 1000
+                    }
+                },
+                {
+                    "quantity": 1,
+                    "product": {
+                        "price": 1600
+                    }
+                }
+            ]
+        },
+        {
+            "is_complete": false,
+            "cart_items": [
+                {
+                    "quantity": 2,
+                    "product": {
+                        "price": 1100
+                    }
+                },
+                {
+                    "quantity": 2,
+                    "product": {
+                        "price": 1000
+                    }
+                }
+            ]
+        }
+    ],
+    "cart_items": [
+        {
+            "id": "0d656070-673e-11ed-ac6c-7224baf239e5"
+        },
+        {
+            "id": "15956d4e-673e-11ed-ac6d-7224baf239e5"
+        },
+        {
+            "id": "3fddf1e8-673e-11ed-bf8f-7224baf239e5"
+        },
+        {
+            "id": "43b56e54-673e-11ed-bf90-7224baf239e5"
+        },
+        {
+            "id": "48a1028e-673e-11ed-bf91-7224baf239e5"
+        },
+        {
+            "id": "530d4534-673e-11ed-bf92-7224baf239e5"
+        },
+        {
+            "id": "5641b122-673e-11ed-bf93-7224baf239e5"
+        },
+        {
+            "id": "5bd9afd6-673e-11ed-bf94-7224baf239e5"
+        },
+        {
+            "id": "653b2f50-673e-11ed-bf95-7224baf239e5"
+        },
+        {
+            "id": "6b96a780-673e-11ed-bf96-7224baf239e5"
+        },
+        {
+            "id": "7a34aa08-673e-11ed-bf97-7224baf239e5"
+        },
+        {
+            "id": "7d5b6924-673e-11ed-bf98-7224baf239e5"
+        },
+        {
+            "id": "7265bc84-f830-11ee-81ed-7ab37ca8f164"
+        },
+        {
+            "id": "cb40eaf2-f837-11ee-bf18-5679e1dc6cba"
+        }
+    ]
+}
