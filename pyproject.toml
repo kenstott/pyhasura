@@ -1,7 +1,7 @@
 [project]
 name = "pyhasura"
 description = "A Python library to simplify Hasura, GraphQL and Machine Learning"
-version = "1.0.0"
+dynamic = ["version"]
 authors = [
     { name = "Kenneth Stott", email = "ken@kenstott.com" }
 ]
@@ -20,4 +20,11 @@ dependencies = [
 ]
 
 [project.urls]
+respository="https://github.com/kenstott/pyhasura"
 
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "__version__.__version__"}
