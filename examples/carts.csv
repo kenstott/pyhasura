@@ -1,6 +1,6 @@
-is_complete,cart_items_0_quantity,cart_items_0_product_price,cart_items_1_quantity,cart_items_1_product_price,cart_items_2_quantity,cart_items_2_product_price,cart_items_3_quantity,cart_items_3_product_price
-True,1,150,2,1000,-2.0,1000.0,,
-False,1,1000,1,1600,1.0,150.0,,
-False,1,1100,1,1000,2.0,150.0,-1.0,1000.0
-True,1,1000,1,1600,,,,
-False,2,1100,2,1000,,,,
+created_at,is_complete,user_name,cart_items_quantity,cart_items_product_name,cart_items_product_price
+2023-05-26T19:10:17.211232+00:00,True,Sean,1,Sticker Sheet,150
+2023-05-26T19:10:17.211232+00:00,False,Rob,1,Hasuras in The Cloud Tee,1000
+2023-05-26T19:10:17.211232+00:00,True,Sandeep,1,Hasuras in The Cloud Tee,1000
+2023-05-26T19:10:17.211232+00:00,False,Abby,2,Monogram Baseball Cap,1100
+2023-05-26T19:10:17.211232+00:00,True,Marion,1,Monogram Baseball Cap,1100

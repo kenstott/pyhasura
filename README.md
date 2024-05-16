@@ -73,8 +73,8 @@ pprint(result)
 
 ### Detect Anomalies
 
-Uses DictVectorizer. Assumes text is categorical, or enumerators. 
-To Do - allow an alternate vectorizer - e.g. Word2Vec. To include more semantic meaning in anomaly detection.
+Uses Doc2Vec to facilitate deeper semantic analysis, but also works fine with categorical string fields.
+
 ```python
 result = hasura_client.anomalies()
 pprint(result)
@@ -103,4 +103,45 @@ result = hasura_client.optimal_number_of_clusters(1,8)
 pprint(result)
 result = hasura_client.clusters(result)
 pprint(result)
+```
+
+### Model First Design using DBML
+
+Build models using [DB Diagram](https://dbdiagram.io/) then generate Hasura metadata.
+```python
+metadata = hasura_client.add_dbml_model_as_source(
+    'global-retail-sales.dbml',
+    kind='postgres',
+    configuration=configuration,
+    output_file='new-metadata.json'
+)
+```
+
+### Auto-Generated/Discovery of Relationships
+
+Wire up as many data sources as you want to analyze to a Hasura instance
+and automatically generate relationships (across data sources).
+```python
+old_metadata = hasura_client.get_metadata()
+
+# generate relationships
+new_metadata = hasura_client.relationship_analysis('new-metadata.json', entity_synonyms={"Stores": ["warehouse"]})
+
+# update hasura with new relationships
+hasura_client.replace_metadata(metadata=new_metadata)
+
+```
+
+### Upload a folder of CSVs to PostgreSQL
+
+Create a datasource from a schema from PostgreSQL.
+Point a folder of CSVs to same PostgreSQL instance and schema.
+Then automatically track them in Hasura.
+
+```python
+# upload data to database
+tables = hasura_client.upload_csv_folder('retailer', uri=_uri, casing=Casing.camel)
+
+# track all the tables we uploaded
+result = hasura_client.track_pg_tables(tables, schema="public")
 ```

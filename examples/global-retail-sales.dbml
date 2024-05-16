@@ -1,0 +1,66 @@
+Table "Customers" {
+  "customerKey" bigint
+  "gender" text [note: "Male, Female or Other"]
+  "name" text
+  "city" text
+  "stateCode" text
+  "state" text
+  "zipCode" text [note: "Or zip code or postal code"]
+  "country" text
+  "continent" text
+  "birthday" timestamp
+  Note: "Customers from around the world."
+}
+
+Table "DataDictionary" {
+  "table" text
+  "field" text
+  "description" text
+  Note: "This is not really used"
+}
+
+Table "ExchangeRates" {
+  "date" timestamp [note: "the as-of-date for the exchange rate"]
+  "currency" text [note: "the currency code used for sales."]
+  "exchange" doubleprecision [note: "the value of the exchange rate to the USD"]
+  Note: "Use this to convert a sale into local currency"
+}
+
+Table "Products" {
+  "productKey" bigint
+  "productName" text [note: "Produce name as defined by manufacturer."]
+  "brand" text
+  "color" text
+  "unitCostUSD" doubleprecision
+  "unitPriceUSD" doubleprecision
+  "subcategoryKey" bigint
+  "subcategory" text
+  "categoryKey" bigint
+  "category" text
+}
+
+Table "Sales" {
+  "orderNumber" bigint
+  "lineItem" bigint
+  "orderDate" timestamp
+  "deliveryDate" timestamp
+  "customerKey" bigint
+  "storeKey" bigint
+  "productKey" bigint
+  "quantity" bigint
+  "currencyCode" text
+}
+
+Table "Stores" {
+  "storeKey" bigint
+  "country" text
+  "state" text
+  "squareMeters" doubleprecision
+  "openDate" timestamp
+}
+
+
+Ref: Customers.customerKey < Sales.customerKey
+Ref: Products.productKey < Sales.productKey
+Ref: Stores.storeKey < Sales.storeKey
+Ref: Sales.(orderDate,currencyCode)-ExchangeRates.(date,currency)

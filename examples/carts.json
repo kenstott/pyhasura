@@ -1,45 +1,42 @@
 [
     {
+        "created_at": "2023-05-26T19:10:17.211232+00:00",
         "is_complete": true,
-        "cart_items_0_quantity": 1,
-        "cart_items_0_product_price": 150,
-        "cart_items_1_quantity": 2,
-        "cart_items_1_product_price": 1000,
-        "cart_items_2_quantity": -2,
-        "cart_items_2_product_price": 1000
+        "user_name": "Sean",
+        "cart_items_quantity": 1,
+        "cart_items_product_name": "Sticker Sheet",
+        "cart_items_product_price": 150
     },
     {
+        "created_at": "2023-05-26T19:10:17.211232+00:00",
         "is_complete": false,
-        "cart_items_0_quantity": 1,
-        "cart_items_0_product_price": 1000,
-        "cart_items_1_quantity": 1,
-        "cart_items_1_product_price": 1600,
-        "cart_items_2_quantity": 1,
-        "cart_items_2_product_price": 150
+        "user_name": "Rob",
+        "cart_items_quantity": 1,
+        "cart_items_product_name": "Hasuras in The Cloud Tee",
+        "cart_items_product_price": 1000
     },
     {
-        "is_complete": false,
-        "cart_items_0_quantity": 1,
-        "cart_items_0_product_price": 1100,
-        "cart_items_1_quantity": 1,
-        "cart_items_1_product_price": 1000,
-        "cart_items_2_quantity": 2,
-        "cart_items_2_product_price": 150,
-        "cart_items_3_quantity": -1,
-        "cart_items_3_product_price": 1000
-    },
-    {
+        "created_at": "2023-05-26T19:10:17.211232+00:00",
         "is_complete": true,
-        "cart_items_0_quantity": 1,
-        "cart_items_0_product_price": 1000,
-        "cart_items_1_quantity": 1,
-        "cart_items_1_product_price": 1600
+        "user_name": "Sandeep",
+        "cart_items_quantity": 1,
+        "cart_items_product_name": "Hasuras in The Cloud Tee",
+        "cart_items_product_price": 1000
     },
     {
+        "created_at": "2023-05-26T19:10:17.211232+00:00",
         "is_complete": false,
-        "cart_items_0_quantity": 2,
-        "cart_items_0_product_price": 1100,
-        "cart_items_1_quantity": 2,
-        "cart_items_1_product_price": 1000
+        "user_name": "Abby",
+        "cart_items_quantity": 2,
+        "cart_items_product_name": "Monogram Baseball Cap",
+        "cart_items_product_price": 1100
+    },
+    {
+        "created_at": "2023-05-26T19:10:17.211232+00:00",
+        "is_complete": true,
+        "user_name": "Marion",
+        "cart_items_quantity": 1,
+        "cart_items_product_name": "Monogram Baseball Cap",
+        "cart_items_product_price": 1100
     }
 ]
