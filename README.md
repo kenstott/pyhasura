@@ -147,7 +147,7 @@ result = hasura_client.track_pg_tables(tables, schema="public")
 ```
 ### Convert SDL into nodes and relationships
 
-Take a Hasura graphql endpoint and converts tje metadata it into nodes 
+Take a Hasura graphql endpoint and converts the metadata it into nodes 
 and edges for graph analysis (e.g. finding the optimal path between 2 types).
 
 ```python
