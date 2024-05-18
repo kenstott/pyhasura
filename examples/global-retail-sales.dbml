@@ -60,7 +60,7 @@ Table "Stores" {
 }
 
 
-Ref: Customers.customerKey < Sales.customerKey
+Ref: Customers.customerKey < Sales.customerKey // this is a note
 Ref: Products.productKey < Sales.productKey
 Ref: Stores.storeKey < Sales.storeKey
 Ref: Sales.(orderDate,currencyCode)-ExchangeRates.(date,currency)

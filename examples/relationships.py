@@ -13,12 +13,8 @@ hasura_client = HasuraClient(
     admin_secret=os.environ.get("HASURA_ADMIN_SECRET2"),
     logging_=logging)
 
-db_name = "crisp-sheepdog-47_db_3216533"
-user = "kenstott"
-password = "rN8qOh6AEMCP"
-host = "ep-yellow-salad-961725.us-west-2.aws.neon.tech"
-port = 5432
-_uri = f'postgresql://{user}:{password}@{host}:{port}/{db_name}'
+_uri = f'postgresql://{os.environ.get("DB_USER")}:{os.environ.get("DB_PASSWORD")}@{os.environ.get("DB_HOST")}:'\
+       f'{os.environ.get("DB_PORT")}/{os.environ.get("DB_NAME")}'
 
 # upload data to database
 tables = hasura_client.upload_csv_folder('retailer', uri=_uri, casing=Casing.camel)
