@@ -11,6 +11,7 @@ import pyarrow as pa
 import requests
 from gql import gql
 from graphql import build_client_schema
+from neo4j import GraphDatabase
 from pymongo import MongoClient
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction import DictVectorizer
@@ -748,3 +749,23 @@ class HasuraClient:
         if output_file is not None:
             self._write_result_as_file(output_file, result)
         return result
+
+    def get_schema_relationships(self):
+        rel = Relationships(
+            self.get_metadata(),
+            self.get_schema(),
+            logging_=self.logging,
+            client=self
+        )
+        return rel.get_schema_relationships()
+
+    def metadata_to_neo4j(self, uri, username, password, nodes=None, relationships=None):
+        rel = Relationships(
+            self.get_metadata(),
+            self.get_schema(),
+            logging_=self.logging,
+            client=self
+        )
+        if nodes is None or relationships is None:
+            nodes, relationships = rel.get_schema_relationships()
+        rel.metadata_to_neo4j(uri, username, password, nodes, relationships)

@@ -4,3 +4,6 @@ build/
 .venv/
 .env
 .idea/
+.cache/
+*.pkl
+new-metadata.json

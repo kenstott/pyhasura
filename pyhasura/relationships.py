@@ -1,6 +1,8 @@
+import hashlib
 import re
 import copy
 import camelcaser as cc
+from neo4j import GraphDatabase
 from pluralizer import Pluralizer
 from graphql import is_object_type, is_non_null_type, is_list_type, is_leaf_type, is_enum_type, is_wrapping_type, \
     get_named_type
@@ -10,6 +12,13 @@ from pyhasura.helpers import get_ordinal_of_smallest_number, compute_deltas
 from pyhasura.keys import combine_words
 from pyhasura.synonyms import split_cased_phrase, get_last_noun_sequence, get_synonyms
 from pyhasura.vectorize import vectorize_string, find_related_words
+import diskcache
+
+# Specify the path where you want to store the cache
+cache_path = ".cache/pyhasura/relationships"
+
+# Create or load the cache
+cache = diskcache.Cache(cache_path)
 
 pluralizer = Pluralizer()
 
@@ -31,13 +40,49 @@ class Relationships:
                  key_correlation_test_size=300000,
                  key_correlation_test_rate=.05
                  ):
+        self.logging = logging_
         self.metadata = copy.deepcopy(metadata)
         self.schema = schema
         self.disallowed_key_types = disallowed_key_types or ['timestamptz', 'Boolean', 'timestamp']
         self.entity_synonyms = entity_synonyms or {}
         self.alternate_keys = alternate_keys or ['state', 'city', 'country', 'zip code', 'postal code']
-        candidates = [candidate.split() for candidate in self.alternate_keys]
+        self.alternate_keys = self._get_cached_data(self.alternate_keys)
+        self.alternate_keys_regex = [re.compile(ak, re.IGNORECASE) for ak in self.alternate_keys]
+        self.key_suffixes = key_suffixes or ['id', 'key', 'serial number', 'code']
+        self.relationships = []
+        self.valid_keys = set()
+        self.client = client
+        self.key_uniqueness_test_size = key_uniqueness_test_size
+        self.key_uniqueness_test_rate = key_uniqueness_test_rate
+        self.key_correlation_test_size = key_correlation_test_size
+        self.key_correlation_test_rate = key_correlation_test_rate
+        self.type_names = [source.get('customization', {}).get('type_names') for source in
+                           self.metadata.get('sources', [])
+                           if source.get('customization', {}).get('type_names') is not None]
+
+        def get_prefix_object_names(source):
+            root_fields = source.get('customization', {}).get('root_fields', {})
+            # prefix = root_fields.get('prefix', '')
+            # suffix = root_fields.get('suffix', '')
+            namespace = root_fields.get('namespace', '')
+            return [
+                f'{namespace}_mutation_frontend',
+                f'{namespace}_query',
+                f'{namespace}_subscription'
+            ]
+
+        self.root_fields = []
+        for source in self.metadata.get('sources', []):
+            if source.get('customization', {}).get('root_fields') is not None:
+                self.root_fields += get_prefix_object_names(source)
+        self.valid_keys_uniqueness = {}
+
+    def _get_data_from_source(self, alternate_keys):
+
+        self.logging.info('Generating the alternate key cache. This may take several minutes on first run.')
+        candidates = [candidate.split() for candidate in alternate_keys]
         word_lists = []
+
         for candidate in candidates:
             word_list = []
             for word in candidate:
@@ -47,25 +92,20 @@ class Relationships:
                 word_list.append(synonyms)
             combined = combine_words(word_list)
             word_lists.append(combined)
-        self.alternate_keys = sum(word_lists, [])
+        word_lists = sum(word_lists, [])
+        result = ['|'.join(list({cc.make_snake_case(ak), cc.make_lower_camel_case(ak), ak})) for ak in word_lists]
+        return result
 
-        self.alternate_keys_regex = [re.compile(
-                '|'.join(list({cc.make_snake_case(ak), cc.make_lower_camel_case(ak), ak})),
-                re.IGNORECASE
-            ) for ak in self.alternate_keys]
-        self.key_suffixes = key_suffixes or ['id', 'key', 'serial number', 'code']
-        self.relationships = []
-        self.valid_keys = set()
-        self.logging = logging_
-        self.client = client
-        self.key_uniqueness_test_size = key_uniqueness_test_size
-        self.key_uniqueness_test_rate = key_uniqueness_test_rate
-        self.key_correlation_test_size = key_correlation_test_size
-        self.key_correlation_test_rate = key_correlation_test_rate
-        self.type_names = [source.get('customization', {}).get('type_names') for source in
-                           self.metadata.get('sources', [])
-                           if source.get('customization', {}).get('type_names') is not None]
-        self.valid_keys_uniqueness = {}
+    def _get_cached_data(self, alternate_keys):
+        input_key = hashlib.sha256(bytes("\n".join(alternate_keys), "utf-8")).hexdigest()
+        data = cache.get(input_key)
+        # Check if data is already cached
+        if data is None:
+            # Derive data and cache it
+            data = self._get_data_from_source(alternate_keys)
+            result = cache.set(input_key, data)
+            test = cache.get(input_key)
+        return data
 
     def _create_pk_candidates(self, entity):
         schema = self.schema
@@ -153,6 +193,13 @@ class Relationships:
             return self._get_concrete_type(t.of_type)
         return t
 
+    def _is_list_type(self, t):
+        if is_wrapping_type(t):
+            if is_list_type(t):
+                return True
+            return self._is_list_type(t.of_type)
+        return False
+
     def _is_relationship(self, t):
         if is_non_null_type(t):
             return self._is_relationship(t.of_type)
@@ -195,7 +242,8 @@ class Relationships:
     def _check_object_type(self, item):
         root = self.remove_type_names(item[0])
         return is_object_type(item[1]) and not root.startswith('_') and not root.endswith('_aggregate') and not \
-            root.endswith('_root') and not root.endswith('_fields') and not root.endswith('_response')
+            root.endswith('_root') and not root.endswith('_fields') and not root.endswith('_response') and \
+            root not in self.root_fields
 
     @staticmethod
     def _get_entity_name(source, table):
@@ -351,7 +399,8 @@ class Relationships:
         return None
 
     def _get_timestamp_field(self, entity):
-        return [name[0] for name in self.schema.type_map.get(entity).fields.items() if is_leaf_type(name[1].type) and name[1].type.name in ['timestamp', 'timestampz']]
+        return [name[0] for name in self.schema.type_map.get(entity).fields.items() if
+                is_leaf_type(name[1].type) and name[1].type.name in ['timestamp', 'timestampz']]
 
     def _validate_keys(self):
         keys = set()
@@ -498,11 +547,11 @@ class Relationships:
                         pluralizer.singular(self.remove_type_names(entity2)), 'object',
                         pluralizer.singular(self.remove_type_names(entity1)), 'object')
                 elif key2_unique == 1 and key1_unique != 1:
-                    relationship_names = (pluralizer.plural(self.remove_type_names(entity2)), 'array',
-                                          pluralizer.singular(self.remove_type_names(entity1)), 'object')
-                elif key1_unique == 1 and key2_unique != 1:
                     relationship_names = (pluralizer.singular(self.remove_type_names(entity2)), 'object',
                                           pluralizer.plural(self.remove_type_names(entity1)), 'array')
+                elif key1_unique == 1 and key2_unique != 1:
+                    relationship_names = (pluralizer.plural(self.remove_type_names(entity2)), 'array',
+                                          pluralizer.singular(self.remove_type_names(entity1)), 'object')
                 else:
                     relationship_names = (pluralizer.plural(self.remove_type_names(entity2)), 'array',
                                           pluralizer.plural(self.remove_type_names(entity1)), 'array')
@@ -579,6 +628,52 @@ class Relationships:
             if reverse_name is not None:
                 add_relationship(entity2, entity1, column2, column1, reverse_type, reverse_name)
 
+    def get_schema_relationships(self):
+        """
+        Get the relationships between object types in the schema.
+
+        Returns:
+            nodes (set): A set of tuples containing the object types and their labels.
+            relationships (list): A list of tuples containing the relationship information between object types.
+        """
+        relationships = []
+        nodes = set()
+        object_types = self._get_object_types()
+        for object_type in object_types:
+            object_type_source, object_type_table = self._get_table(name=object_type[0])
+            object_type_labels = (object_type[0], object_type_source.get('name'), object_type_table.get('table').get('name'))
+            nodes.add((object_type, object_type_labels))
+            fields = object_type[1].fields.items()
+            for field in fields:
+                concrete_type = self._get_concrete_type(field[1].type)
+                if is_object_type(concrete_type) and self._check_object_type((concrete_type.name, concrete_type)):
+                    concrete_type_source, concrete_type_table = self._get_table(name=concrete_type.name)
+                    concrete_type_labels = (
+                        concrete_type.name, concrete_type_source.get('name'), concrete_type_table.get('table').get('name'))
+                    nodes.add(((concrete_type.name, concrete_type), concrete_type_labels))
+                    rel_type = 'array' if self._is_list_type(field[1].type) else 'object'
+                    field_parts = field[0].split('By')
+                    rel_modifier = field_parts[1] if len(field_parts) > 1 else None
+                    rel_name = f'HAS_{pluralizer.plural(cc.make_snake_case(concrete_type.name)).upper()}' \
+                        if rel_type == 'array' \
+                        else f'HAVE_{pluralizer.singular(cc.make_snake_case(concrete_type.name)).upper()}'
+                    if rel_modifier is not None:
+                        rel_name += '_BY_' + rel_modifier.upper()
+                    relationships.append((
+                        object_type,
+                        object_type_source,
+                        object_type_table,
+                        object_type_labels,
+                        field,
+                        rel_type,
+                        rel_name,
+                        (concrete_type.name, concrete_type),
+                        concrete_type_source,
+                        concrete_type_table,
+                        concrete_type_labels
+                    ))
+        return nodes, relationships
+
     def analyze_relationships(self):
         self.logging.info('Analyzing relationships...')
         tables = self._metadata_tables()
@@ -606,3 +701,66 @@ class Relationships:
         self._update_metadata()
         # write out result
         return self.metadata
+
+    def metadata_to_neo4j(self, uri, username, password, nodes=None, relationships=None):
+        """
+        Args:
+            uri: The URI of the Neo4j database.
+            username: The username used for authentication.
+            password: The password used for authentication.
+            nodes: A list of nodes to be created in the Neo4j database. Each node should be a tuple containing three elements: (fields, node_info, table_info). `fields` is a dictionary containing
+        * the field names and their corresponding types. `node_info` is a tuple containing the name, source, and table information of the node. `table_info` is a dictionary containing additional
+        * information about the table.
+            relationships: A list of relationships to be created in the Neo4j database. Each relationship should be a tuple containing eleven elements: (_, _, _, source_labels, field, _, rel
+        *_name, _, _, _, destination_labels). `_` represents unused elements. `source_labels` and `destination_labels` are tuples containing the name, source, and additional information of the
+        * source and destination nodes, respectively. `field` is a tuple containing the name and additional information of the field. `rel_name` is the name of the relationship.
+
+        Example usage:
+
+        nodes = [
+            ({"field1": "type1", "field2": "type2"}, ("Node1", "Source1", "Table1"), {}),
+            ({"field3": "type3", "field4": "type4"}, ("Node2", "Source2", "Table2"), {}),
+        ]
+
+        relationships = [
+            (_, _, _, ("Source1", "Node1", {}), ("Field1", {}), _, "RELATIONSHIP1", _, _, _, ("Source2", "Node2", {})),
+            (_, _, _, ("Source2", "Node2", {}), ("Field2", {}), _, "RELATIONSHIP2", _, _, _, ("Source1", "Node1", {})),
+        ]
+
+        metadata_to_neo4j(uri="neo4j://localhost:7687", username="admin", password="password", nodes=nodes, relationships=relationships)
+        """
+        driver = GraphDatabase.driver(uri, auth=(username, password))
+
+        def create_node(tx, node):
+            name, source, table = node[1]
+            fields = {"_name": name, "_source": source, "_table": table}
+
+            for field in node[0][1].fields.items():
+                concrete_type = self._get_concrete_type(field[1].type)
+                field_name = field[0] if field[0] != 'name' else 'name_'
+                if not is_object_type(concrete_type):
+                    fields[field_name] = concrete_type.name
+            tx.run(f"CREATE (a:{name}:{source}:DataProduct) SET a = $fields RETURN a",
+                   fields=fields)
+
+        def create_relationship(tx, relationship):
+            _, _, _, source_labels, field, _, rel_name, _, _, _, destination_labels = relationship
+            field_name, _ = field
+            source_name, source_source, _ = source_labels
+            dest_name, dest_source, _ = destination_labels
+            tx.run(f"""
+                MATCH (a:{source_name}:{source_source}:DataProduct), (b:{dest_name}:{dest_source}:DataProduct)
+                CREATE (a)-[:{rel_name} {{relationshipName: $field_name}}]->(b)
+            """, field_name=field_name)
+
+        def remove_nodes(tx):
+            tx.run(f"MATCH (n:DataProduct) DETACH DELETE n")
+
+        with driver.session() as session:
+            session.write_transaction(remove_nodes)
+            for node in nodes:
+                session.write_transaction(create_node, node)
+            for relationship in relationships:
+                session.write_transaction(create_relationship, relationship)
+
+        driver.close()

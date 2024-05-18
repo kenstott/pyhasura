@@ -145,3 +145,18 @@ tables = hasura_client.upload_csv_folder('retailer', uri=_uri, casing=Casing.cam
 # track all the tables we uploaded
 result = hasura_client.track_pg_tables(tables, schema="public")
 ```
+### Convert SDL into nodes and relationships
+
+Take a Hasura graphql endpoint and converts tje metadata it into nodes 
+and edges for graph analysis (e.g. finding the optimal path between 2 types).
+
+```python
+nodes, relationships = hasura_client.get_schema_relationships()
+pp(nodes)
+pp(relationships)
+
+hasura_client.metadata_to_neo4j(
+    os.environ.get("NEO4J_URI"),
+    os.environ.get("NEO4J_USERNAME"),
+    os.environ.get("NEO4J_PASSWORD"))
+```

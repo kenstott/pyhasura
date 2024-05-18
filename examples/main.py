@@ -1,7 +1,6 @@
 import logging
 import os
 from pprint import pprint
-import jsondiff
 
 from dotenv import load_dotenv
 from pyhasura import HasuraClient, ExportFormat, Casing
@@ -13,32 +12,6 @@ hasura_client = HasuraClient(
     uri=os.environ.get("HASURA_URI"),
     admin_secret=os.environ.get("HASURA_ADMIN_SECRET2"),
     logging_=logging)
-
-# db_name = "crisp-sheepdog-47_db_3216533"
-# user = "kenstott"
-# password = "rN8qOh6AEMCP"
-# host = "ep-yellow-salad-961725.us-west-2.aws.neon.tech"
-# port = 5432
-# _uri = f'postgresql://{user}:{password}@{host}:{port}/{db_name}'
-
-# upload data to database
-# tables = hasura_client.upload_csv_folder('retailer', uri=_uri, casing=Casing.camel)
-
-# track all the tables we uploaded
-# result = hasura_client.track_pg_tables(tables, schema="public")
-# hasura_client.reload_schema()
-# pprint(result)
-
-# remember current relationships
-old_metadata = {"metadata": hasura_client.get_metadata()}
-
-# generate relationships
-new_metadata = hasura_client.relationship_analysis('new-metadata.json')
-
-# look at the difference
-diff = jsondiff.diff(old_metadata, new_metadata)
-pprint(diff)
-exit(0)
 
 result = hasura_client.execute("""
 query findCarts {
