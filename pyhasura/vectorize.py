@@ -1,6 +1,8 @@
+import math
 import numbers
 import os
 import pickle
+import sys
 
 from dateutil.parser import parse
 from transformers import BertTokenizer, BertModel
@@ -14,6 +16,8 @@ from pyhasura.synonyms import PartOfSpeech, is_part_of_speech
 sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-large-uncased')
+dict_index = 0
+word_dic = dict()
 
 
 def vectorize_string_mean(sentence):
@@ -30,6 +34,8 @@ def vectorize_string(sentence):
 
 
 def vectorize_date_string(value):
+    if value is None:
+        return -sys.maxsize - 1
     if not is_numeric(value):
         try:
             # Parse the RFC 3339 timestamp into a datetime object (including timezone)
@@ -58,29 +64,44 @@ def is_list(value):
     return isinstance(value, list)
 
 
-def vectorize_dict(dictionary):
+def vectorize_dict(dictionary, deep=None, fill_na=False):
+    global dict_index
     for key, value in dictionary.items():
+        if value is None:
+            dictionary[key] = -sys.maxsize - 1
         if is_numeric(value):
-            dictionary[key] = value
+            if fill_na and math.isnan(value):
+                dictionary[key] = -sys.maxsize - 1
+            else:
+                dictionary[key] = value
         elif is_dictionary(value):
-            dictionary[key] = vectorize_dict(value)
+            dictionary[key] = vectorize_dict(value, deep=deep, fill_na=fill_na)
         elif is_list(value):
-            dictionary[key] = vectorize_dicts(value)
+            dictionary[key] = vectorize_dicts(value, deep=deep, fill_na=fill_na)
         elif is_boolean(value):
             if value:
                 dictionary[key] = 1.0
             else:
                 dictionary[key] = 0.0
-        else:
+        elif deep is not None and deep.has_key(key):
             new_value = vectorize_date_string(value)
             if not is_numeric(new_value):
                 new_value = vectorize_string_mean(value)
                 dictionary[key] = new_value
+            else:
+                dictionary[key] = new_value
+        else:
+            new_value = word_dic.get(value)
+            if new_value is None:
+                new_value = dict_index
+                word_dic[value] = dict_index
+                dict_index = dict_index + 1
+            dictionary[key] = new_value
     return dictionary
 
 
-def vectorize_dicts(array_of_dicts):
-    return list(map(lambda x: vectorize_dict(dict(x)), array_of_dicts))
+def vectorize_dicts(array_of_dicts, fill_na=False, deep=None):
+    return list(map(lambda x: vectorize_dict(dict(x), deep=deep, fill_na=fill_na), array_of_dicts))
 
 
 def cosine_similarity(a, b):

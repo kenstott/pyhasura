@@ -24,3 +24,6 @@ python-camelcaser~=1.0.2
 pydbml~=1.0.11
 neo4j~=5.20.0
 diskcache~=5.6.3
+sentence-transformers~=2.7.0
+requests_toolbelt~=1.0.0
+

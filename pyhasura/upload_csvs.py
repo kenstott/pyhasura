@@ -68,7 +68,7 @@ def fix_currency(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def import_tables(csv_folder: str, uri: str, if_exists='replace', logging=None, casing=Casing.none) -> list[str]:
+def import_tables(csv_folder: str, uri: str, if_exists='replace', logging=None, casing=Casing.none, type_casing=Casing.none) -> list[str]:
     """
     Imports tables from CSV files into a database using SQLAlchemy.
 
@@ -91,6 +91,10 @@ def import_tables(csv_folder: str, uri: str, if_exists='replace', logging=None, 
     # Loop through each CSV file
     for filename in glob.glob(os.path.join(csv_folder, "*.csv")):
         table_name = cc.make_camel_case(os.path.splitext(os.path.basename(filename))[0])
+        if type_casing == Casing.camel:
+            table_name = cc.make_lower_camel_case(os.path.splitext(os.path.basename(filename))[0])
+        elif type_casing == Casing.snake:
+            table_name = cc.make_snake_case(os.path.splitext(os.path.basename(filename))[0])
         results.append(table_name)
         df = pd.read_csv(filename, encoding=predict_encoding(Path(filename)))
         df = fix_dates(df)

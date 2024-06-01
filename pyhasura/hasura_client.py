@@ -11,7 +11,6 @@ import pyarrow as pa
 import requests
 from gql import gql
 from graphql import build_client_schema
-from neo4j import GraphDatabase
 from pymongo import MongoClient
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction import DictVectorizer
@@ -324,7 +323,7 @@ class HasuraClient:
             """
         return self.execute(introspection_query)
 
-    def vectorize_result(self, min_features_dict=None):
+    def vectorize_result(self, min_features_dict=None, fill_na=False, deep=None):
         """
         Vectorizes the last query result using DictVectorizer.
 
@@ -336,7 +335,7 @@ class HasuraClient:
         for key in self.native_result:
             v = DictVectorizer(sparse=False)  # Set sparse=False for a dense array
             flatted_dict = flatten_nested_dicts(self.native_result[key])
-            vectorized = vectorize_dicts(flatted_dict)
+            vectorized = vectorize_dicts(flatted_dict, deep, fill_na)
             self.vectorized_result[key] = v.fit_transform(vectorized)
             rows, num_features = self.vectorized_result[key].shape
             if min_features_dict is not None and min_features_dict.get(key) is not None and \
@@ -394,7 +393,7 @@ class HasuraClient:
         return clustered
 
     def anomalies_training(self, output_dir=None, base64_encoded_data=False, database_output=False,
-                           selection_set_hash=None):
+                           selection_set_hash=None, deep=None):
         """
         Trains anomaly detection models and saves them.
 
@@ -418,7 +417,7 @@ class HasuraClient:
         """
         if output_dir is not None:
             self.output_dir = output_dir
-        self.vectorize_result()
+        self.vectorize_result(deep=deep, fill_na=True)
         clf = IsolationForest(contamination=0.1, random_state=42)
         filenames = {"selectionSetHash": selection_set_hash, "operationName": self.operation_name}
         for key in self.vectorized_result:
@@ -449,9 +448,10 @@ class HasuraClient:
         return filenames
 
     def anomalies(self, training_files=None, threshold=0, training_base64=None, selection_set_hash=None,
-                  operation_name=None):
+                  operation_name=None, deep=None):
         """
         Args:
+            deep: A set of column names of string types, to do deep string vectorization
             training_files: A dictionary mapping keys to file paths for training files (default: None)
             threshold: The threshold value below which anomalies are considered (default: 0)
             training_base64: Base64 encoded training data (default: None)
@@ -500,7 +500,7 @@ class HasuraClient:
             elif training_base64 is not None:
                 trained_models[key] = pickle.loads(base64.b64decode(training_base64[key]))
                 min_features[key] = trained_models[key].n_features_in_
-        self.vectorize_result(min_features)
+        self.vectorize_result(min_features, deep=deep, fill_na=True)
         for key in self.vectorized_result:
             if trained_models.get(key) is None:
                 trained_models[key] = IsolationForest(contamination=0.1, random_state=42)
@@ -573,7 +573,7 @@ class HasuraClient:
         """
         return pd.DataFrame(self.native_result)
 
-    def upload_csv_folder(self, csv_folder, uri, if_exists='replace', casing=Casing.none):
+    def upload_csv_folder(self, csv_folder, uri, if_exists='replace', casing=Casing.camel, type_casing=Casing.pascal):
         """
         Uploads a folder of CSV files to a specified URI.
 
@@ -581,12 +581,13 @@ class HasuraClient:
             csv_folder (str): The path to the folder containing the CSV files.
             uri (str): The destination database URI where the CSV files will be uploaded.
             if_exists (str, optional): The action to take if a table with the same name already exists at the destination URI. Default is 'replace'.
-            casing (Casing, optional): The casing rule to apply to the column names. Defaults to Casing.none.
+            type_casing (Casing, optional): The casing rule to apply to the type names. Defaults to Casing.pascal.
+            casing (Casing, optional): The casing rule to apply to the column names. Defaults to Casing.camel.
 
         Returns:
             The table names that were imported from the CSV files.
         """
-        return import_tables(csv_folder=csv_folder, uri=uri, if_exists=if_exists, casing=casing, logging=self.logging)
+        return import_tables(csv_folder=csv_folder, uri=uri, if_exists=if_exists, casing=casing, type_casing=type_casing, logging=self.logging)
 
     def write_to_file(self, output_dir=None, output_format=None):
         """

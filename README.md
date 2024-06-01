@@ -109,7 +109,7 @@ pprint(result)
 
 Build models using [DB Diagram](https://dbdiagram.io/) then generate Hasura metadata.
 
-<iframe width="560" height="315" src='https://dbdiagram.io/e/663bac189e85a46d55569b7f/6648f38ef84ecd1d2288c5ed'></iframe>
+[Click here for an example](https://dbdiagram.io/e/663bac189e85a46d55569b7f/6648f38ef84ecd1d2288c5ed)
 
 ```python
 metadata = hasura_client.add_dbml_model_as_source(
