@@ -10,7 +10,7 @@ import pandas as pd
 import pyarrow as pa
 import requests
 from gql import gql
-from graphql import build_client_schema
+from graphql import build_client_schema, IntrospectionQuery
 from pymongo import MongoClient
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction import DictVectorizer
@@ -21,7 +21,7 @@ from pyhasura.helpers import get_ordinal_of_smallest_number, compute_deltas
 from pyhasura.relationships import Relationships
 from pyhasura.upload_csvs import import_tables, Casing
 from pyhasura.vectorize import vectorize_dicts
-from pyhasura.dbml_hasura import add_dbml
+from pyhasura.dbml_hasura import add_dbml, DBType
 from gql.transport.requests import log as requests_logger
 
 
@@ -35,10 +35,10 @@ class ExportFormat(Enum):
 
 
 def add_score(item, index, score):
-    copy = dict(item)
-    copy['__score__'] = score
-    copy['__index__'] = index
-    return copy
+    _copy = dict(item)
+    _copy['__score__'] = score
+    _copy['__index__'] = index
+    return _copy
 
 
 def add_dummy_features(dicts, n, m):
@@ -222,7 +222,7 @@ class HasuraClient:
         """
         return build_client_schema(self.get_sdl())
 
-    def get_sdl(self):
+    def get_sdl(self) -> IntrospectionQuery:
         """
         Retrieves the Schema Definition Language (SDL) for the GraphQL API.
 
@@ -321,7 +321,10 @@ class HasuraClient:
                 }
             }
             """
-        return self.execute(introspection_query)
+        result = self.execute(introspection_query, output_format=ExportFormat.NATURAL)
+        result = result.get('data', {})
+        result = result.get('__schema')
+        return IntrospectionQuery(__schema=result)
 
     def vectorize_result(self, min_features_dict=None, fill_na=False, deep=None):
         """
@@ -402,6 +405,7 @@ class HasuraClient:
             base64_encoded_data (bool, optional): Indicates whether the models should be stored as base64-encoded data. Default is False.
             database_output (bool, optional): Indicates whether the models should be stored in a database. Default is False.
             selection_set_hash (str, optional): The hash value for this selection set. Default is an empty string.
+            deep: An set of column names of strings, where embeddings should use word embeddings rather than a word dictionary. Adds improved semantic analysis. But slows performance significantly.
 
         Returns:
             dict: A dictionary containing filenames/path of the saved models. If database_output is True and a MONGODB_CONNECTION_STRING environment variable is set, saves the model.
@@ -700,7 +704,7 @@ class HasuraClient:
         self.get_metadata()
         return result
 
-    def add_dbml_model_as_source(self, dbml_model_file, configuration, kind, output_file=None, customization=None):
+    def add_dbml_model_as_source(self, dbml_model_file, configuration, kind, output_file=None, customization=None, db_type=DBType.PG):
         """
         Args:
             dbml_model_file: A string representing the file path of the DBML model file.
@@ -708,6 +712,7 @@ class HasuraClient:
             kind: A string representing the kind of source to be added.
             output_file: (Optional) A string representing the file path where the result will be written. If not provided, the result will not be written to a file.
             customization: (Optional) A dictionary representing the customization options for the source.
+            db_type: Hasura metadata naming conventions are DB specific. Supports PG, ORACLE and TRINO
 
         Returns:
             result: A dictionary representing the result of adding the DBML model as a source.

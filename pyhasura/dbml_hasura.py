@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydbml import PyDBML
 from pathlib import Path
 import camelcaser as cc
@@ -6,7 +8,29 @@ from pluralizer import Pluralizer
 pluralizer = Pluralizer()
 
 
-def add_dbml(dbml_file, kind, configuration, logging, hasura_client, customization):
+class DBType(Enum):
+    PG = 'pg'
+    ORACLE = 'oracle'
+    TRINO = 'trino'
+
+
+def get_table_name(path=None, db_type=DBType.PG):
+    if path is None:
+        raise Exception('No resource path provided')
+    if db_type == DBType.PG:
+        return {
+            "schema": path[0],
+            "name": path[1]
+        }
+    elif db_type == DBType.ORACLE:
+        return [path[0], path[1]]
+    elif db_type == DBType.TRINO:
+        return path[0].split('.') + path[1]
+    else:
+        raise Exception('Unknown DB Type')
+
+
+def add_dbml(dbml_file, kind, configuration, logging, hasura_client, customization, db_type=DBType.PG):
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.DEBUG)
     parsed = PyDBML(Path(dbml_file))
     source = {
@@ -26,10 +50,7 @@ def add_dbml(dbml_file, kind, configuration, logging, hasura_client, customizati
 
     def create_table_metadata(dbml_table):
         return {
-            "table": {
-                "name": dbml_table.name,
-                "schema": dbml_table.schema
-            },
+            "table": get_table_name([dbml_table.schema, dbml_table.name], db_type),
             "configuration": {
                 "column_config": {},
                 "custom_column_names": {},
@@ -66,10 +87,7 @@ def add_dbml(dbml_file, kind, configuration, logging, hasura_client, customizati
                 "manual_configuration": {
                     "column_mapping": column_mapping,
                     "insertion_order": None,
-                    "remote_table": {
-                        "name": dbml_ref.table1.name if reverse else dbml_ref.table2.name,
-                        "schema": dbml_ref.table1.schema if reverse else dbml_ref.table2.schema,
-                    }
+                    "remote_table": get_table_name([dbml_ref.table2.schema, dbml_ref.table2.name], db_type)
                 }
             }
         }
